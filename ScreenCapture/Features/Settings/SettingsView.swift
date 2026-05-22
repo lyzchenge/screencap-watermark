@@ -51,17 +51,37 @@ struct SettingsView: View {
             } header: {
                 Label("标注", systemImage: "pencil.tip.crop.circle")
             }
+
+            // 水印
             Section {
                 WatermarkToggle(viewModel: viewModel)
                 if viewModel.watermarkEnabled {
-                    WatermarkTextField(viewModel: viewModel)
-                    WatermarkFontSizeSlider(viewModel: viewModel)
-                    WatermarkOpacitySlider(viewModel: viewModel)
-                    WatermarkPositionPicker(viewModel: viewModel)
+                    Divider()
+
+                    // 文字水印
+                    TextWatermarkToggle(viewModel: viewModel)
+                    if viewModel.watermarkTextEnabled {
+                        WatermarkTextField(viewModel: viewModel)
+                        WatermarkFontSizeSlider(viewModel: viewModel)
+                    }
+
+                    // 图片水印
+                    ImageWatermarkToggle(viewModel: viewModel)
+                    if viewModel.watermarkImageEnabled {
+                        WatermarkImagePicker(viewModel: viewModel)
+                        WatermarkImageSizeSlider(viewModel: viewModel)
+                    }
+
+                    if viewModel.watermarkTextEnabled || viewModel.watermarkImageEnabled {
+                        Divider()
+                        WatermarkOpacitySlider(viewModel: viewModel)
+                        WatermarkPositionPicker(viewModel: viewModel)
+                    }
                 }
             } header: {
                 Label("水印", systemImage: "text.word.spacing")
             }
+
             Section {
                 Button(role: .destructive) {
                     viewModel.resetAllToDefaults()
@@ -71,7 +91,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(minWidth: 480, minHeight: 550)
+        .frame(minWidth: 480, minHeight: 580)
         .alert("错误", isPresented: $viewModel.showErrorAlert) {
             Button("确定") { viewModel.errorMessage = nil }
         } message: {
@@ -80,6 +100,7 @@ struct SettingsView: View {
     }
 }
 
+// MARK: - 水印总开关
 private struct WatermarkToggle: View {
     @Bindable var viewModel: SettingsViewModel
     var body: some View {
@@ -87,6 +108,15 @@ private struct WatermarkToggle: View {
     }
 }
 
+// MARK: - 文字水印开关
+private struct TextWatermarkToggle: View {
+    @Bindable var viewModel: SettingsViewModel
+    var body: some View {
+        Toggle("文字水印", isOn: $viewModel.watermarkTextEnabled)
+    }
+}
+
+// MARK: - 文字水印输入
 private struct WatermarkTextField: View {
     @Bindable var viewModel: SettingsViewModel
     var body: some View {
@@ -97,6 +127,7 @@ private struct WatermarkTextField: View {
     }
 }
 
+// MARK: - 文字字号
 private struct WatermarkFontSizeSlider: View {
     @Bindable var viewModel: SettingsViewModel
     var body: some View {
@@ -113,6 +144,66 @@ private struct WatermarkFontSizeSlider: View {
     }
 }
 
+// MARK: - 图片水印开关
+private struct ImageWatermarkToggle: View {
+    @Bindable var viewModel: SettingsViewModel
+    var body: some View {
+        Toggle("图片水印", isOn: $viewModel.watermarkImageEnabled)
+    }
+}
+
+// MARK: - 图片水印选择
+private struct WatermarkImagePicker: View {
+    @Bindable var viewModel: SettingsViewModel
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("水印图片").font(.subheadline)
+            HStack {
+                if let img = viewModel.watermarkPreviewImage {
+                    Image(nsImage: img)
+                        .resizable().aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: 150, maxHeight: 60)
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.3)))
+                } else {
+                    Text("未选择图片")
+                        .foregroundStyle(.secondary)
+                        .frame(height: 40)
+                }
+                Spacer()
+                HStack(spacing: 8) {
+                    Button { viewModel.selectWatermarkImage() } label: {
+                        Text("选择...")
+                    }
+                    if viewModel.watermarkPreviewImage != nil {
+                        Button { viewModel.clearWatermarkImage() } label: {
+                            Text("清除")
+                        }.foregroundStyle(.red)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - 图片水印大小
+private struct WatermarkImageSizeSlider: View {
+    @Bindable var viewModel: SettingsViewModel
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("图片大小"); Spacer()
+                Text("\(Int(viewModel.watermarkImageSizePercent))%").foregroundStyle(.secondary).monospacedDigit()
+            }
+            Slider(value: $viewModel.watermarkImageSizePercent, in: SettingsViewModel.watermarkImageSizeRange, step: 0.5) {
+                Text("图片大小")
+            } minimumValueLabel: { Text("2%").font(.caption) } maximumValueLabel: { Text("30%").font(.caption) }
+            Text("相对于图片短边的比例").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+}
+
+// MARK: - 透明度
 private struct WatermarkOpacitySlider: View {
     @Bindable var viewModel: SettingsViewModel
     var body: some View {
@@ -123,11 +214,12 @@ private struct WatermarkOpacitySlider: View {
             }
             Slider(value: $viewModel.watermarkOpacityPercent, in: SettingsViewModel.watermarkOpacityRange, step: 5) {
                 Text("透明度")
-            } minimumValueLabel: { Text("5%").font(.caption) } maximumValueLabel: { Text("100%").font(.caption) }
+            } minimumValueLabel: { Text("10%").font(.caption) } maximumValueLabel: { Text("100%").font(.caption) }
         }
     }
 }
 
+// MARK: - 位置
 private struct WatermarkPositionPicker: View {
     @Bindable var viewModel: SettingsViewModel
     var body: some View {
@@ -140,6 +232,7 @@ private struct WatermarkPositionPicker: View {
     }
 }
 
+// MARK: - 权限行
 private struct PermissionRow: View {
     @Bindable var viewModel: SettingsViewModel
     var body: some View {
