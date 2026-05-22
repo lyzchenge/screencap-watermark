@@ -43,6 +43,10 @@ final class AppSettings {
         static let watermarkMarginRatio = prefix + "watermarkMarginRatio"
         static let watermarkColorHex = prefix + "watermarkColorHex"
         static let watermarkTileSpacingRatio = prefix + "watermarkTileSpacingRatio"
+        static let watermarkTextEnabled = prefix + "watermarkTextEnabled"
+        static let watermarkImageEnabled = prefix + "watermarkImageEnabled"
+        static let watermarkImageData = prefix + "watermarkImageData"
+        static let watermarkImageSizeRatio = prefix + "watermarkImageSizeRatio"
     }
 
     // MARK: - Properties
@@ -134,6 +138,26 @@ final class AppSettings {
         didSet { save(watermarkOpacity, forKey: Keys.watermarkOpacity) }
     }
 
+    /// Whether text watermark is enabled
+    var watermarkTextEnabled: Bool {
+        didSet { save(watermarkTextEnabled, forKey: Keys.watermarkTextEnabled) }
+    }
+
+    /// Whether image watermark is enabled
+    var watermarkImageEnabled: Bool {
+        didSet { save(watermarkImageEnabled, forKey: Keys.watermarkImageEnabled) }
+    }
+
+    /// Image watermark data (PNG/JPEG)
+    var watermarkImageData: Data? {
+        didSet { saveWatermarkImageData() }
+    }
+
+    /// Image watermark size ratio
+    var watermarkImageSizeRatio: Double {
+        didSet { save(watermarkImageSizeRatio, forKey: Keys.watermarkImageSizeRatio) }
+    }
+
     /// Watermark position
     var watermarkPosition: WatermarkPosition {
         didSet { save(watermarkPosition.rawValue, forKey: Keys.watermarkPosition) }
@@ -159,17 +183,22 @@ final class AppSettings {
         get {
             WatermarkConfig(
                 enabled: watermarkEnabled,
+                textEnabled: watermarkTextEnabled,
                 text: watermarkText,
                 fontSizeRatio: watermarkFontSizeRatio,
                 opacity: watermarkOpacity,
                 position: watermarkPosition,
                 marginRatio: watermarkMarginRatio,
                 colorHex: watermarkColorHex,
-                tileSpacingRatio: watermarkTileSpacingRatio
+                tileSpacingRatio: watermarkTileSpacingRatio,
+                imageEnabled: watermarkImageEnabled,
+                imageData: watermarkImageData,
+                imageSizeRatio: watermarkImageSizeRatio
             )
         }
         set {
             watermarkEnabled = newValue.enabled
+            watermarkTextEnabled = newValue.textEnabled
             watermarkText = newValue.text
             watermarkFontSizeRatio = newValue.fontSizeRatio
             watermarkOpacity = newValue.opacity
@@ -177,6 +206,9 @@ final class AppSettings {
             watermarkMarginRatio = newValue.marginRatio
             watermarkColorHex = newValue.colorHex
             watermarkTileSpacingRatio = newValue.tileSpacingRatio
+            watermarkImageEnabled = newValue.imageEnabled
+            watermarkImageData = newValue.imageData
+            watermarkImageSizeRatio = newValue.imageSizeRatio
         }
     }
 
@@ -240,7 +272,11 @@ final class AppSettings {
         watermarkEnabled = defaults.object(forKey: Keys.watermarkEnabled) as? Bool ?? false
         watermarkText = defaults.string(forKey: Keys.watermarkText) ?? ""
         watermarkFontSizeRatio = defaults.object(forKey: Keys.watermarkFontSizeRatio) as? Double ?? 0.03
-        watermarkOpacity = defaults.object(forKey: Keys.watermarkOpacity) as? Double ?? 0.3
+        watermarkOpacity = defaults.object(forKey: Keys.watermarkOpacity) as? Double ?? 0.6
+        watermarkTextEnabled = defaults.object(forKey: Keys.watermarkTextEnabled) as? Bool ?? true
+        watermarkImageEnabled = defaults.object(forKey: Keys.watermarkImageEnabled) as? Bool ?? false
+        watermarkImageData = defaults.data(forKey: Keys.watermarkImageData)
+        watermarkImageSizeRatio = defaults.object(forKey: Keys.watermarkImageSizeRatio) as? Double ?? 0.08
         if let posRaw = defaults.string(forKey: Keys.watermarkPosition),
            let pos = WatermarkPosition(rawValue: posRaw) {
             watermarkPosition = pos
@@ -303,11 +339,15 @@ final class AppSettings {
         watermarkEnabled = false
         watermarkText = ""
         watermarkFontSizeRatio = 0.03
-        watermarkOpacity = 0.3
+        watermarkOpacity = 0.6
         watermarkPosition = .bottomRight
         watermarkMarginRatio = 0.02
         watermarkColorHex = "#FFFFFF"
         watermarkTileSpacingRatio = 0.25
+        watermarkTextEnabled = true
+        watermarkImageEnabled = false
+        watermarkImageData = nil
+        watermarkImageSizeRatio = 0.08
     }
 
     // MARK: - Private Persistence Helpers
@@ -348,6 +388,10 @@ final class AppSettings {
         if let data = try? JSONEncoder().encode(recentCaptures) {
             UserDefaults.standard.set(data, forKey: Keys.recentCaptures)
         }
+    }
+
+    private func saveWatermarkImageData() {
+        UserDefaults.standard.set(watermarkImageData, forKey: Keys.watermarkImageData)
     }
 
     private static func loadRecentCaptures() -> [RecentCapture] {
