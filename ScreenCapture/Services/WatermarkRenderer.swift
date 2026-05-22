@@ -21,8 +21,10 @@ struct WatermarkRenderer: Sendable {
         let height = CGFloat(image.height)
         let imageSize = CGSize(width: width, height: height)
 
-        // 创建位图上下文（使用原图的位图格式避免不兼容）
-        let bitmapInfo = image.bitmapInfo.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
+        // 创建位图上下文（先清除原图 alpha 信息，再设置新的，避免无效位掩码）
+        let alphaInfo = CGImageAlphaInfo.premultipliedLast.rawValue
+        let cleanInfo = image.bitmapInfo.rawValue & ~CGBitmapInfo.alphaInfoMask.rawValue
+        let bitmapInfo = cleanInfo | alphaInfo
         guard let colorSpace = image.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB),
               let context = CGContext(
                   data: nil,
