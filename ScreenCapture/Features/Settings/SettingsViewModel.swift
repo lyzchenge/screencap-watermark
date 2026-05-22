@@ -220,24 +220,12 @@ final class SettingsViewModel {
 
     // MARK: - Permission Checking
 
-    /// Checks screen capture access using SCShareableContent (nonisolated for Swift 6)
-    private nonisolated func checkScreenCaptureAccess() async -> Bool {
-        do {
-            _ = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
-            return true
-        } catch {
-            return false
-        }
-    }
-
     /// Checks all required permissions and updates status
     func checkPermissions() {
         isCheckingPermissions = true
-        Task { @MainActor in
-            hasScreenRecordingPermission = await checkScreenCaptureAccess()
-            hasFolderAccessPermission = checkFolderAccess(to: saveLocation)
-            isCheckingPermissions = false
-        }
+        hasScreenRecordingPermission = CGPreflightScreenCaptureAccess()
+        hasFolderAccessPermission = checkFolderAccess(to: saveLocation)
+        isCheckingPermissions = false
     }
 
     /// Checks if we have write access to the specified folder
@@ -256,12 +244,16 @@ final class SettingsViewModel {
 
     /// Requests screen recording permission or opens System Settings
     func requestScreenRecordingPermission() {
-        Task { @MainActor in
-            let hasAccess = await checkScreenCaptureAccess()
-            if !hasAccess {
-                openScreenRecordingSettings()
+        let granted = CGRequestScreenCaptureAccess()
+        if granted {
+            hasScreenRecordingPermission = true
+        } else {
+            openScreenRecordingSettings()
+            // Recheck after a delay
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(1))
+                hasScreenRecordingPermission = CGPreflightScreenCaptureAccess()
             }
-            checkPermissions()
         }
     }
 
