@@ -17,19 +17,19 @@ jobs:
 
       - name: Apply patches
         run: |
-          # 复制修改过的文件
-          cp -r ScreenCapture/Models/*    /tmp/original/ScreenCapture/Models/
-          cp -r ScreenCapture/Services/*  /tmp/original/ScreenCapture/Services/
-          cp -r ScreenCapture/Features/*  /tmp/original/ScreenCapture/Features/
+          cp ScreenCapture/Models/*    /tmp/original/ScreenCapture/Models/
+          cp ScreenCapture/Services/*  /tmp/original/ScreenCapture/Services/
+          cp ScreenCapture/Features/*  /tmp/original/ScreenCapture/Features/
 
-      - name: Find and patch PreviewViewModel
+      - name: Patch PreviewViewModel
         run: |
           PREVIEW_VM=$(find /tmp/original -name "PreviewViewModel.swift" | head -1)
           python3 patch_preview_vm.py "$PREVIEW_VM"
 
       - name: Add new files to Xcode project
         run: |
-          PBXPROJ=$(find /tmp/original -name "project.pbxproj" | head -1)
+          XCPROJ=$(find /tmp/original -name "*.xcodeproj" -d 1 | head -1)
+          echo "Xcode project: $XCPROJ"
           sudo gem install xcodeproj --no-doc
           ruby -e '
           require "xcodeproj"
@@ -37,7 +37,7 @@ jobs:
           t = p.targets.find { |t| t.is_a?(Xcodeproj::Project::Object::PBXNativeTarget) }
           abort "no target" unless t
           mg = p.main_group.find_subpath("ScreenCapture", false)
-          abort "no group" unless mg
+          abort "no ScreenCapture group" unless mg
           [
             [mg.find_subpath("Models", true) || mg.new_group("Models"), "ScreenCapture/Models/WatermarkConfig.swift"],
             [mg.find_subpath("Services", true) || mg.new_group("Services"), "ScreenCapture/Services/WatermarkRenderer.swift"],
@@ -49,17 +49,18 @@ jobs:
             t.source_build_phase.add_file_reference(ref)
             puts "  added #{File.basename(path)}"
           end
-          p.save' "$PBXPROJ" /tmp/original
+          p.save
+          puts "Xcode project saved"' "$XCPROJ" /tmp/original
 
       - name: Build
         run: |
-          XCODEPROJ=$(find /tmp/original -name "*.xcodeproj" -d 1 | head -1)
+          XCPROJ=$(find /tmp/original -name "*.xcodeproj" -d 1 | head -1)
           xcodebuild \
-            -project "$XCODEPROJ" \
+            -project "$XCPROJ" \
             -scheme ScreenCapture \
             -configuration Release \
             -derivedDataPath /tmp/derived \
-            build 2>&1 | tail -30
+            build 2>&1 | tail -40
 
       - name: Package DMG
         run: |
