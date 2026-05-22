@@ -21,7 +21,6 @@ jobs:
           cp ScreenCapture/Services/*.swift     /tmp/original/ScreenCapture/Services/
           cp -r ScreenCapture/Features/Preview/*   /tmp/original/ScreenCapture/Features/Preview/
           cp -r ScreenCapture/Features/Settings/*  /tmp/original/ScreenCapture/Features/Settings/
-          cp ScreenCapture/Supporting\ Files/ScreenCapture.entitlements /tmp/original/ScreenCapture/Supporting\ Files/
 
       - name: Fix deployment target (26.0 → 15.0)
         run: |
@@ -48,14 +47,6 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             build
-
-      - name: Ad-hoc sign with entitlements
-        run: |
-          APP=$(find /tmp/derived -name "ScreenCapture.app" -type d | head -1)
-          ENTITLEMENTS="/tmp/original/ScreenCapture/Supporting Files/ScreenCapture.entitlements"
-          echo "Signing $APP with entitlements $ENTITLEMENTS"
-          codesign --force --deep --sign - --entitlements "$ENTITLEMENTS" "$APP"
-          codesign -d --entitlements - "$APP" 2>/dev/null | head -5
 
       - name: Package DMG
         run: |
