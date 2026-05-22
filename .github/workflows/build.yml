@@ -32,6 +32,10 @@ jobs:
           PREVIEW_VM=$(find /tmp/original -name "PreviewViewModel.swift" | head -1)
           python3 patch_preview_vm.py "$PREVIEW_VM"
 
+      - name: Chinese translation
+        run: |
+          python3 zh_patch.py /tmp/original/ScreenCapture
+
       - name: Build
         run: |
           XCPROJ=$(find /tmp/original -name "*.xcodeproj" -d 1 | head -1)
@@ -53,7 +57,7 @@ jobs:
           cp -R "$APP" /tmp/dmg/
           ln -s /Applications /tmp/dmg/Applications
           hdiutil create \
-            -volname "ScreenCapture-Watermark" \
+            -volname "屏幕截图-水印版" \
             -srcfolder /tmp/dmg \
             -ov -format UDZO \
             /tmp/ScreenCapture-Watermark.dmg
