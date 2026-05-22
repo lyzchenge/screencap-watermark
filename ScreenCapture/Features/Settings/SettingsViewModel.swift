@@ -220,17 +220,21 @@ final class SettingsViewModel {
 
     // MARK: - Permission Checking
 
+    /// Checks screen capture access using SCShareableContent (nonisolated for Swift 6)
+    private nonisolated func checkScreenCaptureAccess() async -> Bool {
+        do {
+            _ = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     /// Checks all required permissions and updates status
     func checkPermissions() {
         isCheckingPermissions = true
-
         Task { @MainActor in
-            do {
-                let _ = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
-                hasScreenRecordingPermission = true
-            } catch {
-                hasScreenRecordingPermission = false
-            }
+            hasScreenRecordingPermission = await checkScreenCaptureAccess()
             hasFolderAccessPermission = checkFolderAccess(to: saveLocation)
             isCheckingPermissions = false
         }
@@ -253,11 +257,8 @@ final class SettingsViewModel {
     /// Requests screen recording permission or opens System Settings
     func requestScreenRecordingPermission() {
         Task { @MainActor in
-            do {
-                let _ = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
-                hasScreenRecordingPermission = true
-            } catch {
-                hasScreenRecordingPermission = false
+            let hasAccess = await checkScreenCaptureAccess()
+            if !hasAccess {
                 openScreenRecordingSettings()
             }
             checkPermissions()
