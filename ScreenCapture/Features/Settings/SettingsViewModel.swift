@@ -224,13 +224,18 @@ final class SettingsViewModel {
     func checkPermissions() {
         isCheckingPermissions = true
 
-        // Check screen recording permission using CGPreflightScreenCaptureAccess
-        hasScreenRecordingPermission = CGPreflightScreenCaptureAccess()
-
-        // Check folder access permission by testing if we can write to the save location
-        hasFolderAccessPermission = checkFolderAccess(to: saveLocation)
-
-        isCheckingPermissions = false
+        // macOS 15+ uses SCShareableContent for reliable permission check
+        // CGPreflightScreenCaptureAccess is deprecated and unreliable on Sequoia
+        Task {
+            do {
+                let _ = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+                hasScreenRecordingPermission = true
+            } catch {
+                hasScreenRecordingPermission = false
+            }
+            hasFolderAccessPermission = checkFolderAccess(to: saveLocation)
+            isCheckingPermissions = false
+        }
     }
 
     /// Checks if we have write access to the specified folder
@@ -249,17 +254,16 @@ final class SettingsViewModel {
 
     /// Requests screen recording permission or opens System Settings
     func requestScreenRecordingPermission() {
-        // First try to request permission (this triggers the system prompt if not asked before)
-        let hasAccess = CGRequestScreenCaptureAccess()
-
-        if !hasAccess {
-            // If no access, open System Settings to the Screen Recording pane
-            openScreenRecordingSettings()
-        }
-
-        // Recheck permissions after a short delay
+        // macOS 15+: SCShareableContent triggers the system prompt naturally
         Task {
-            try? await Task.sleep(for: .milliseconds(500))
+            do {
+                let _ = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+                hasScreenRecordingPermission = true
+            } catch {
+                // If access denied, open System Settings
+                hasScreenRecordingPermission = false
+                openScreenRecordingSettings()
+            }
             checkPermissions()
         }
     }
