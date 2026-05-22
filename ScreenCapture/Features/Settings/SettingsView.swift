@@ -237,9 +237,17 @@ private struct PermissionRow: View {
     @Bindable var viewModel: SettingsViewModel
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            PermissionItem(icon: "record.circle", title: "屏幕录制", hint: "截图功能需要此权限",
-                isGranted: viewModel.hasScreenRecordingPermission, isChecking: viewModel.isCheckingPermissions,
-                onGrant: { viewModel.requestScreenRecordingPermission() })
+            HStack {
+                HStack(spacing: 8) {
+                    Image(systemName: "record.circle").foregroundStyle(.secondary).frame(width: 20)
+                    Text("屏幕录制")
+                }
+                Spacer()
+                Text("请在系统设置中授权").foregroundStyle(.secondary)
+                Button { viewModel.requestScreenRecordingPermission() } label: {
+                    Text("打开设置")
+                }.buttonStyle(.borderedProminent).controlSize(.small)
+            }
             Divider()
             PermissionItem(icon: "folder", title: "保存位置访问", hint: "保存截图需要访问所选文件夹",
                 isGranted: viewModel.hasFolderAccessPermission, isChecking: viewModel.isCheckingPermissions,
