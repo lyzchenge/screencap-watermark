@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import AppKit
 
 /// 水印位置枚举
 enum WatermarkPosition: String, Codable, CaseIterable, Sendable {
@@ -22,10 +23,13 @@ enum WatermarkPosition: String, Codable, CaseIterable, Sendable {
     }
 }
 
-/// 水印配置
+/// 水印配置（支持文字 + 图片）
 struct WatermarkConfig: Codable, Sendable {
     /// 是否启用水印
     var enabled: Bool = false
+
+    /// 文字水印是否启用
+    var textEnabled: Bool = true
 
     /// 水印文字
     var text: String = ""
@@ -34,7 +38,7 @@ struct WatermarkConfig: Codable, Sendable {
     var fontSizeRatio: Double = 0.03
 
     /// 不透明度 (0.0 ~ 1.0)
-    var opacity: Double = 0.3
+    var opacity: Double = 0.6
 
     /// 水印位置
     var position: WatermarkPosition = .bottomRight
@@ -42,29 +46,42 @@ struct WatermarkConfig: Codable, Sendable {
     /// 距离边缘的内边距（相对于图片宽度的比例）
     var marginRatio: Double = 0.02
 
-    /// 水印颜色（默认白色半透明）
+    /// 水印颜色（文字水印用，默认白色）
     var colorHex: String = "#FFFFFF"
 
     /// 平铺时的间距比例
     var tileSpacingRatio: Double = 0.25
 
+    // MARK: - 图片水印
+
+    /// 图片水印是否启用
+    var imageEnabled: Bool = false
+
+    /// 图片水印数据（PNG/JPEG）
+    var imageData: Data? = nil
+
+    /// 图片水印尺寸比例（相对于图片短边的比例）
+    var imageSizeRatio: Double = 0.08
+
     // MARK: - Computed Properties
 
-    /// 实际字体大小（基于图片尺寸计算）
     func fontSize(for imageSize: CGSize) -> CGFloat {
         let baseSize = min(imageSize.width, imageSize.height)
         return baseSize * fontSizeRatio
     }
 
-    /// 实际边距
     func margin(for imageSize: CGSize) -> CGFloat {
         let baseSize = min(imageSize.width, imageSize.height)
         return baseSize * marginRatio
     }
 
-    /// 平铺间距
     func tileSpacing(for imageSize: CGSize) -> CGFloat {
         let baseSize = min(imageSize.width, imageSize.height)
         return baseSize * tileSpacingRatio
+    }
+
+    func imageSize(for imageSize: CGSize) -> CGFloat {
+        let baseSize = min(imageSize.width, imageSize.height)
+        return baseSize * imageSizeRatio
     }
 }
