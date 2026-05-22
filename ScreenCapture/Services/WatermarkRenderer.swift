@@ -2,7 +2,7 @@ import Foundation
 import CoreGraphics
 import AppKit
 
-/// 水印渲染引擎 — 使用 NSImage 合成，避免 CGContext bitmapInfo 兼容性问题
+/// 水印渲染 — 使用 NSBitmapImageRep 合成，最可靠方案
 struct WatermarkRenderer: Sendable {
 
     func applyWatermark(to image: CGImage, config: WatermarkConfig) -> CGImage {
@@ -12,16 +12,27 @@ struct WatermarkRenderer: Sendable {
         let hasImage = config.imageEnabled && config.imageData != nil
         guard hasText || hasImage else { return image }
 
-        let w = CGFloat(image.width)
-        let h = CGFloat(image.height)
-        let size = NSSize(width: w, height: h)
+        let w = image.width
+        let h = image.height
 
-        let base = NSImage(cgImage: image, size: size)
-        let canvas = NSImage(size: size)
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: w, pixelsHigh: h,
+            bitsPerSample: 8, samplesPerPixel: 4,
+            hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: w * 4, bitsPerPixel: 32
+        ) else { return image }
 
-        canvas.lockFocus()
-        base.draw(in: NSRect(origin: .zero, size: size))
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
 
+        // 画原图
+        let nsImage = NSImage(cgImage: image, size: NSSize(width: w, height: h))
+        nsImage.draw(in: NSRect(x: 0, y: 0, width: w, height: h),
+                     from: .zero, operation: .copy, fraction: 1)
+
+        // 画水印
         if hasText {
             renderText(config: config, imageSize: CGSize(width: w, height: h))
         }
@@ -29,8 +40,9 @@ struct WatermarkRenderer: Sendable {
             renderImage(config: config, imageSize: CGSize(width: w, height: h))
         }
 
-        canvas.unlockFocus()
-        return canvas.cgImage(forProposedRect: nil, context: nil, hints: nil) ?? image
+        NSGraphicsContext.restoreGraphicsState()
+
+        return rep.cgImage ?? image
     }
 
     // MARK: - 文字水印
@@ -47,30 +59,25 @@ struct WatermarkRenderer: Sendable {
             .foregroundColor: color
         ]
         let str = NSAttributedString(string: config.text, attributes: attrs)
-        let textSize = str.size()
+        let sz = str.size()
 
         switch config.position {
         case .bottomRight:
-            str.draw(at: NSPoint(x: w - textSize.width - margin, y: margin))
+            str.draw(at: NSPoint(x: w - sz.width - margin, y: margin))
         case .bottomLeft:
             str.draw(at: NSPoint(x: margin, y: margin))
         case .topRight:
-            str.draw(at: NSPoint(x: w - textSize.width - margin, y: h - textSize.height - margin))
+            str.draw(at: NSPoint(x: w - sz.width - margin, y: h - sz.height - margin))
         case .topLeft:
-            str.draw(at: NSPoint(x: margin, y: h - textSize.height - margin))
+            str.draw(at: NSPoint(x: margin, y: h - sz.height - margin))
         case .center:
-            str.draw(at: NSPoint(x: (w - textSize.width) / 2, y: (h - textSize.height) / 2))
+            str.draw(at: NSPoint(x: (w - sz.width) / 2, y: (h - sz.height) / 2))
         case .tile:
-            let spacing = config.tileSpacing(for: imageSize)
-            let sx = textSize.width + spacing
-            let sy = textSize.height + spacing
-            var y: CGFloat = spacing
-            while y < h {
-                var x: CGFloat = spacing
-                while x < w {
-                    str.draw(at: NSPoint(x: x, y: y))
-                    x += sx
-                }
+            let sp = config.tileSpacing(for: imageSize)
+            let sx = sz.width + sp; let sy = sz.height + sp
+            var y: CGFloat = sp
+            while y < h { var x: CGFloat = sp
+                while x < w { str.draw(at: NSPoint(x: x, y: y)); x += sx }
                 y += sy
             }
         }
@@ -79,65 +86,53 @@ struct WatermarkRenderer: Sendable {
     // MARK: - 图片水印
 
     private func renderImage(config: WatermarkConfig, imageSize: CGSize) {
-        guard let data = config.imageData,
-              let img = NSImage(data: data), img.isValid else { return }
-
+        guard let data = config.imageData, let img = NSImage(data: data), img.isValid else { return }
         let margin = config.margin(for: imageSize)
         let target = config.imageSize(for: imageSize)
-        let w = imageSize.width
-        let h = imageSize.height
-
+        let w = imageSize.width; let h = imageSize.height
         let aspect = img.size.width / img.size.height
-        var drawW: CGFloat, drawH: CGFloat
-        if aspect >= 1 {
-            drawW = target; drawH = target / aspect
-        } else {
-            drawH = target; drawW = target * aspect
-        }
+        var dw: CGFloat, dh: CGFloat
+        if aspect >= 1 { dw = target; dh = target / aspect }
+        else { dh = target; dw = target * aspect }
 
-        let rect: NSRect
+        let frac = CGFloat(config.opacity)
         switch config.position {
         case .bottomRight:
-            rect = NSRect(x: w - drawW - margin, y: margin, width: drawW, height: drawH)
+            img.draw(in: NSRect(x: w - dw - margin, y: margin, width: dw, height: dh),
+                     from: .zero, operation: .sourceOver, fraction: frac)
         case .bottomLeft:
-            rect = NSRect(x: margin, y: margin, width: drawW, height: drawH)
+            img.draw(in: NSRect(x: margin, y: margin, width: dw, height: dh),
+                     from: .zero, operation: .sourceOver, fraction: frac)
         case .topRight:
-            rect = NSRect(x: w - drawW - margin, y: h - drawH - margin, width: drawW, height: drawH)
+            img.draw(in: NSRect(x: w - dw - margin, y: h - dh - margin, width: dw, height: dh),
+                     from: .zero, operation: .sourceOver, fraction: frac)
         case .topLeft:
-            rect = NSRect(x: margin, y: h - drawH - margin, width: drawW, height: drawH)
+            img.draw(in: NSRect(x: margin, y: h - dh - margin, width: dw, height: dh),
+                     from: .zero, operation: .sourceOver, fraction: frac)
         case .center:
-            rect = NSRect(x: (w - drawW) / 2, y: (h - drawH) / 2, width: drawW, height: drawH)
+            img.draw(in: NSRect(x: (w - dw) / 2, y: (h - dh) / 2, width: dw, height: dh),
+                     from: .zero, operation: .sourceOver, fraction: frac)
         case .tile:
-            let spacing = config.tileSpacing(for: imageSize)
-            let sx = drawW + spacing
-            let sy = drawH + spacing
-            var y: CGFloat = spacing
-            while y < h {
-                var x: CGFloat = spacing
+            let sp = config.tileSpacing(for: imageSize)
+            let sx = dw + sp; let sy = dh + sp
+            var y: CGFloat = sp
+            while y < h { var x: CGFloat = sp
                 while x < w {
-                    let r = NSRect(x: x, y: y, width: drawW, height: drawH)
-                    img.draw(in: r, from: .zero, operation: .sourceOver, fraction: CGFloat(config.opacity))
+                    img.draw(in: NSRect(x: x, y: y, width: dw, height: dh),
+                             from: .zero, operation: .sourceOver, fraction: frac)
                     x += sx
                 }
                 y += sy
             }
-            return
         }
-
-        img.draw(in: rect, from: .zero, operation: .sourceOver, fraction: CGFloat(config.opacity))
     }
-
-    // MARK: - 颜色解析
 
     static func parseColor(hex: String) -> NSColor {
         var s = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         if s.hasPrefix("#") { s.removeFirst() }
         guard s.count == 6, let v = UInt64(s, radix: 16) else { return .white }
-        return NSColor(
-            red: CGFloat((v >> 16) & 0xFF) / 255,
-            green: CGFloat((v >> 8) & 0xFF) / 255,
-            blue: CGFloat(v & 0xFF) / 255,
-            alpha: 1
-        )
+        return NSColor(red: CGFloat((v >> 16) & 0xFF) / 255,
+                       green: CGFloat((v >> 8) & 0xFF) / 255,
+                       blue: CGFloat(v & 0xFF) / 255, alpha: 1)
     }
 }
