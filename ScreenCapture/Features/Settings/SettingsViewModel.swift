@@ -224,9 +224,7 @@ final class SettingsViewModel {
     func checkPermissions() {
         isCheckingPermissions = true
 
-        // macOS 15+ uses SCShareableContent for reliable permission check
-        // CGPreflightScreenCaptureAccess is deprecated and unreliable on Sequoia
-        Task {
+        Task { @MainActor in
             do {
                 let _ = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
                 hasScreenRecordingPermission = true
@@ -254,13 +252,11 @@ final class SettingsViewModel {
 
     /// Requests screen recording permission or opens System Settings
     func requestScreenRecordingPermission() {
-        // macOS 15+: SCShareableContent triggers the system prompt naturally
-        Task {
+        Task { @MainActor in
             do {
                 let _ = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
                 hasScreenRecordingPermission = true
             } catch {
-                // If access denied, open System Settings
                 hasScreenRecordingPermission = false
                 openScreenRecordingSettings()
             }
