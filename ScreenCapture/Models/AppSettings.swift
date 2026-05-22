@@ -1,0 +1,375 @@
+import Foundation
+import SwiftUI
+
+/// OCR recognition level for text recognition.
+enum OCRRecognitionLevel: String, Codable, Sendable {
+    case accurate
+    case fast
+}
+
+/// User preferences persisted across sessions via UserDefaults.
+/// All properties automatically sync to UserDefaults with the `ScreenCapture.` prefix.
+@MainActor
+@Observable
+final class AppSettings {
+    // MARK: - Singleton
+
+    /// Shared settings instance
+    static let shared = AppSettings()
+
+    // MARK: - UserDefaults Keys
+
+    private enum Keys {
+        static let prefix = "ScreenCapture."
+        static let saveLocation = prefix + "saveLocation"
+        static let defaultFormat = prefix + "defaultFormat"
+        static let jpegQuality = prefix + "jpegQuality"
+        static let heicQuality = prefix + "heicQuality"
+        static let fullScreenShortcut = prefix + "fullScreenShortcut"
+        static let selectionShortcut = prefix + "selectionShortcut"
+        static let strokeColor = prefix + "strokeColor"
+        static let strokeWidth = prefix + "strokeWidth"
+        static let textSize = prefix + "textSize"
+        static let rectangleFilled = prefix + "rectangleFilled"
+        static let recentCaptures = prefix + "recentCaptures"
+        static let ocrRecognitionLevel = prefix + "ocrRecognitionLevel"
+        static let ocrLanguage = prefix + "ocrLanguage"
+        // Watermark
+        static let watermarkEnabled = prefix + "watermarkEnabled"
+        static let watermarkText = prefix + "watermarkText"
+        static let watermarkFontSizeRatio = prefix + "watermarkFontSizeRatio"
+        static let watermarkOpacity = prefix + "watermarkOpacity"
+        static let watermarkPosition = prefix + "watermarkPosition"
+        static let watermarkMarginRatio = prefix + "watermarkMarginRatio"
+        static let watermarkColorHex = prefix + "watermarkColorHex"
+        static let watermarkTileSpacingRatio = prefix + "watermarkTileSpacingRatio"
+    }
+
+    // MARK: - Properties
+
+    /// Default save directory
+    var saveLocation: URL {
+        didSet { save(saveLocation.path, forKey: Keys.saveLocation) }
+    }
+
+    /// Default export format (PNG or JPEG)
+    var defaultFormat: ExportFormat {
+        didSet { save(defaultFormat.rawValue, forKey: Keys.defaultFormat) }
+    }
+
+    /// JPEG compression quality (0.0-1.0)
+    var jpegQuality: Double {
+        didSet { save(jpegQuality, forKey: Keys.jpegQuality) }
+    }
+
+    /// HEIC compression quality (0.0-1.0)
+    var heicQuality: Double {
+        didSet { save(heicQuality, forKey: Keys.heicQuality) }
+    }
+
+    /// Global hotkey for full screen capture
+    var fullScreenShortcut: KeyboardShortcut {
+        didSet { saveShortcut(fullScreenShortcut, forKey: Keys.fullScreenShortcut) }
+    }
+
+    /// Global hotkey for selection capture
+    var selectionShortcut: KeyboardShortcut {
+        didSet { saveShortcut(selectionShortcut, forKey: Keys.selectionShortcut) }
+    }
+
+    /// Default annotation stroke color
+    var strokeColor: CodableColor {
+        didSet { saveColor(strokeColor, forKey: Keys.strokeColor) }
+    }
+
+    /// Default annotation stroke width
+    var strokeWidth: CGFloat {
+        didSet { save(Double(strokeWidth), forKey: Keys.strokeWidth) }
+    }
+
+    /// Default text annotation font size
+    var textSize: CGFloat {
+        didSet { save(Double(textSize), forKey: Keys.textSize) }
+    }
+
+    /// Whether rectangles are filled (solid) by default
+    var rectangleFilled: Bool {
+        didSet { save(rectangleFilled, forKey: Keys.rectangleFilled) }
+    }
+
+    /// Last 5 saved captures
+    var recentCaptures: [RecentCapture] {
+        didSet { saveRecentCaptures() }
+    }
+
+    /// OCR recognition level (accurate or fast)
+    var ocrRecognitionLevel: OCRRecognitionLevel {
+        didSet { save(ocrRecognitionLevel.rawValue, forKey: Keys.ocrRecognitionLevel) }
+    }
+
+    /// OCR language code (e.g., "en-US")
+    var ocrLanguage: String {
+        didSet { save(ocrLanguage, forKey: Keys.ocrLanguage) }
+    }
+
+    // MARK: - Watermark Properties
+
+    /// Whether watermark is enabled
+    var watermarkEnabled: Bool {
+        didSet { save(watermarkEnabled, forKey: Keys.watermarkEnabled) }
+    }
+
+    /// Watermark text
+    var watermarkText: String {
+        didSet { save(watermarkText, forKey: Keys.watermarkText) }
+    }
+
+    /// Watermark font size ratio (relative to image size)
+    var watermarkFontSizeRatio: Double {
+        didSet { save(watermarkFontSizeRatio, forKey: Keys.watermarkFontSizeRatio) }
+    }
+
+    /// Watermark opacity (0.0-1.0)
+    var watermarkOpacity: Double {
+        didSet { save(watermarkOpacity, forKey: Keys.watermarkOpacity) }
+    }
+
+    /// Watermark position
+    var watermarkPosition: WatermarkPosition {
+        didSet { save(watermarkPosition.rawValue, forKey: Keys.watermarkPosition) }
+    }
+
+    /// Watermark margin ratio (relative to image size)
+    var watermarkMarginRatio: Double {
+        didSet { save(watermarkMarginRatio, forKey: Keys.watermarkMarginRatio) }
+    }
+
+    /// Watermark color hex string
+    var watermarkColorHex: String {
+        didSet { save(watermarkColorHex, forKey: Keys.watermarkColorHex) }
+    }
+
+    /// Watermark tile spacing ratio
+    var watermarkTileSpacingRatio: Double {
+        didSet { save(watermarkTileSpacingRatio, forKey: Keys.watermarkTileSpacingRatio) }
+    }
+
+    /// Computed watermark config
+    var watermarkConfig: WatermarkConfig {
+        get {
+            WatermarkConfig(
+                enabled: watermarkEnabled,
+                text: watermarkText,
+                fontSizeRatio: watermarkFontSizeRatio,
+                opacity: watermarkOpacity,
+                position: watermarkPosition,
+                marginRatio: watermarkMarginRatio,
+                colorHex: watermarkColorHex,
+                tileSpacingRatio: watermarkTileSpacingRatio
+            )
+        }
+        set {
+            watermarkEnabled = newValue.enabled
+            watermarkText = newValue.text
+            watermarkFontSizeRatio = newValue.fontSizeRatio
+            watermarkOpacity = newValue.opacity
+            watermarkPosition = newValue.position
+            watermarkMarginRatio = newValue.marginRatio
+            watermarkColorHex = newValue.colorHex
+            watermarkTileSpacingRatio = newValue.tileSpacingRatio
+        }
+    }
+
+    // MARK: - Initialization
+
+    private init() {
+        let defaults = UserDefaults.standard
+
+        // Load save location from bookmark first, then path, or use Desktop
+        let loadedLocation: URL
+        if let bookmarkData = defaults.data(forKey: "SaveLocationBookmark"),
+           let url = Self.resolveBookmark(bookmarkData) {
+            loadedLocation = url
+        } else if let path = defaults.string(forKey: Keys.saveLocation) {
+            loadedLocation = URL(fileURLWithPath: path)
+        } else {
+            loadedLocation = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
+                ?? URL(fileURLWithPath: NSHomeDirectory())
+        }
+        saveLocation = loadedLocation
+
+        // Load format
+        if let formatRaw = defaults.string(forKey: Keys.defaultFormat),
+           let format = ExportFormat(rawValue: formatRaw) {
+            defaultFormat = format
+        } else {
+            defaultFormat = .png
+        }
+
+        // Load JPEG quality
+        jpegQuality = defaults.object(forKey: Keys.jpegQuality) as? Double ?? 0.9
+
+        // Load HEIC quality
+        heicQuality = defaults.object(forKey: Keys.heicQuality) as? Double ?? 0.9
+
+        // Load shortcuts
+        fullScreenShortcut = Self.loadShortcut(forKey: Keys.fullScreenShortcut)
+            ?? KeyboardShortcut.fullScreenDefault
+        selectionShortcut = Self.loadShortcut(forKey: Keys.selectionShortcut)
+            ?? KeyboardShortcut.selectionDefault
+
+        // Load annotation defaults
+        strokeColor = Self.loadColor(forKey: Keys.strokeColor) ?? .red
+        strokeWidth = CGFloat(defaults.object(forKey: Keys.strokeWidth) as? Double ?? 2.0)
+        textSize = CGFloat(defaults.object(forKey: Keys.textSize) as? Double ?? 14.0)
+        rectangleFilled = defaults.object(forKey: Keys.rectangleFilled) as? Bool ?? false
+
+        // Load OCR settings
+        if let ocrLevelRaw = defaults.string(forKey: Keys.ocrRecognitionLevel),
+           let ocrLevel = OCRRecognitionLevel(rawValue: ocrLevelRaw) {
+            ocrRecognitionLevel = ocrLevel
+        } else {
+            ocrRecognitionLevel = .accurate
+        }
+        ocrLanguage = defaults.string(forKey: Keys.ocrLanguage) ?? "en-US"
+
+        // Load recent captures
+        recentCaptures = Self.loadRecentCaptures()
+
+        // Load watermark settings
+        watermarkEnabled = defaults.object(forKey: Keys.watermarkEnabled) as? Bool ?? false
+        watermarkText = defaults.string(forKey: Keys.watermarkText) ?? ""
+        watermarkFontSizeRatio = defaults.object(forKey: Keys.watermarkFontSizeRatio) as? Double ?? 0.03
+        watermarkOpacity = defaults.object(forKey: Keys.watermarkOpacity) as? Double ?? 0.3
+        if let posRaw = defaults.string(forKey: Keys.watermarkPosition),
+           let pos = WatermarkPosition(rawValue: posRaw) {
+            watermarkPosition = pos
+        } else {
+            watermarkPosition = .bottomRight
+        }
+        watermarkMarginRatio = defaults.object(forKey: Keys.watermarkMarginRatio) as? Double ?? 0.02
+        watermarkColorHex = defaults.string(forKey: Keys.watermarkColorHex) ?? "#FFFFFF"
+        watermarkTileSpacingRatio = defaults.object(forKey: Keys.watermarkTileSpacingRatio) as? Double ?? 0.25
+
+        print("ScreenCapture launched - settings loaded from: \(loadedLocation.path)")
+    }
+
+    // MARK: - Computed Properties
+
+    /// Default stroke style based on current settings
+    var defaultStrokeStyle: StrokeStyle {
+        StrokeStyle(color: strokeColor, lineWidth: strokeWidth)
+    }
+
+    /// Default text style based on current settings
+    var defaultTextStyle: TextStyle {
+        TextStyle(color: strokeColor, fontSize: textSize, fontName: ".AppleSystemUIFont")
+    }
+
+    // MARK: - Recent Captures Management
+
+    /// Adds a capture to the recent list (maintains max 5, FIFO)
+    func addRecentCapture(_ capture: RecentCapture) {
+        recentCaptures.insert(capture, at: 0)
+        if recentCaptures.count > 5 {
+            recentCaptures = Array(recentCaptures.prefix(5))
+        }
+    }
+
+    /// Clears all recent captures
+    func clearRecentCaptures() {
+        recentCaptures = []
+    }
+
+    // MARK: - Reset
+
+    /// Resets all settings to defaults
+    func resetToDefaults() {
+        saveLocation = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory())
+        defaultFormat = .png
+        jpegQuality = 0.9
+        heicQuality = 0.9
+        fullScreenShortcut = .fullScreenDefault
+        selectionShortcut = .selectionDefault
+        strokeColor = .red
+        strokeWidth = 2.0
+        textSize = 14.0
+        rectangleFilled = false
+        ocrRecognitionLevel = .accurate
+        ocrLanguage = "en-US"
+        recentCaptures = []
+        // Reset watermark
+        watermarkEnabled = false
+        watermarkText = ""
+        watermarkFontSizeRatio = 0.03
+        watermarkOpacity = 0.3
+        watermarkPosition = .bottomRight
+        watermarkMarginRatio = 0.02
+        watermarkColorHex = "#FFFFFF"
+        watermarkTileSpacingRatio = 0.25
+    }
+
+    // MARK: - Private Persistence Helpers
+
+    private func save(_ value: Any, forKey key: String) {
+        UserDefaults.standard.set(value, forKey: key)
+    }
+
+    private func saveShortcut(_ shortcut: KeyboardShortcut, forKey key: String) {
+        let data: [String: UInt32] = [
+            "keyCode": shortcut.keyCode,
+            "modifiers": shortcut.modifiers
+        ]
+        UserDefaults.standard.set(data, forKey: key)
+    }
+
+    private static func loadShortcut(forKey key: String) -> KeyboardShortcut? {
+        guard let data = UserDefaults.standard.dictionary(forKey: key) as? [String: UInt32],
+              let keyCode = data["keyCode"],
+              let modifiers = data["modifiers"] else {
+            return nil
+        }
+        return KeyboardShortcut(keyCode: keyCode, modifiers: modifiers)
+    }
+
+    private func saveColor(_ color: CodableColor, forKey key: String) {
+        if let data = try? JSONEncoder().encode(color) {
+            UserDefaults.standard.set(data, forKey: key)
+        }
+    }
+
+    private static func loadColor(forKey key: String) -> CodableColor? {
+        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+        return try? JSONDecoder().decode(CodableColor.self, from: data)
+    }
+
+    private func saveRecentCaptures() {
+        if let data = try? JSONEncoder().encode(recentCaptures) {
+            UserDefaults.standard.set(data, forKey: Keys.recentCaptures)
+        }
+    }
+
+    private static func loadRecentCaptures() -> [RecentCapture] {
+        guard let data = UserDefaults.standard.data(forKey: Keys.recentCaptures) else {
+            return []
+        }
+        return (try? JSONDecoder().decode([RecentCapture].self, from: data)) ?? []
+    }
+
+    /// Resolves a security-scoped bookmark to a URL
+    private static func resolveBookmark(_ bookmarkData: Data) -> URL? {
+        var isStale = false
+        do {
+            let url = try URL(
+                resolvingBookmarkData: bookmarkData,
+                options: .withSecurityScope,
+                relativeTo: nil,
+                bookmarkDataIsStale: &isStale
+            )
+            return isStale ? nil : url
+        } catch {
+            return nil
+        }
+    }
+}

@@ -1,0 +1,4 @@
+DerivedData/
+build_tmp/
+*.dmg
+.DS_Store
