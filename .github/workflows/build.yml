@@ -37,19 +37,68 @@ jobs:
           p = Xcodeproj::Project.open(ARGV[0])
           t = p.targets.find { |t| t.is_a?(Xcodeproj::Project::Object::PBXNativeTarget) }
           abort "no target" unless t
-          mg = p.main_group.find_subpath("ScreenCapture", false)
+
+          # Find groups by path
+          def find_or_create_group(parent, subpath)
+            names = subpath.split("/")
+            current = parent
+            names.each do |name|
+              found = current.children.find { |c| c.respond_to?(:path) && c.path == name }
+              unless found
+                # Try PBXGroup methods
+                found = current.children.find { |c| c.is_a?(Xcodeproj::Project::Object::PBXGroup) && (c.path == name || c.name == name) }
+              end
+              unless found
+                # Check if this is a file system synchronized group — use groups instead
+                if current.respond_to?(:groups)
+                  found = current.groups.find { |g| g.path == name || g.name == name }
+                end
+              end
+              unless found
+                begin
+                  found = current.new_group(name, name)
+                rescue
+                  # fallback: try to create in parent differently
+                  found = p.new_group(name, name, current)
+                end
+              end
+              current = found
+            end
+            current
+          end
+
+          # Find ScreenCapture group
+          mg = p.main_group.children.find { |c| c.is_a?(Xcodeproj::Project::Object::PBXGroup) && (c.path == "ScreenCapture" || c.name == "ScreenCapture") }
+          unless mg
+            if p.main_group.respond_to?(:groups)
+              mg = p.main_group.groups.find { |g| g.path == "ScreenCapture" || g.name == "ScreenCapture" }
+            end
+          end
           abort "no ScreenCapture group" unless mg
+
+          # Find Models and Services sub-groups
+          models_group = mg.children.find { |c| c.respond_to?(:path) && (c.path == "Models" || c.name == "Models") }
+          models_group ||= mg.groups.find { |g| g.path == "Models" || g.name == "Models" } if mg.respond_to?(:groups)
+
+          services_group = mg.children.find { |c| c.respond_to?(:path) && (c.path == "Services" || c.name == "Services") }
+          services_group ||= mg.groups.find { |g| g.path == "Services" || g.name == "Services" } if mg.respond_to?(:groups)
+
+          abort "no Models group" unless models_group
+          abort "no Services group" unless services_group
+
+          src_dir = ARGV[1]
           [
-            [mg.find_subpath("Models", true) || mg.new_group("Models"), "ScreenCapture/Models/WatermarkConfig.swift"],
-            [mg.find_subpath("Services", true) || mg.new_group("Services"), "ScreenCapture/Services/WatermarkRenderer.swift"],
-          ].each do |g,path|
-            fp = File.join(ARGV[1], path)
+            [models_group, "ScreenCapture/Models/WatermarkConfig.swift"],
+            [services_group, "ScreenCapture/Services/WatermarkRenderer.swift"],
+          ].each do |g, path|
+            fp = File.join(src_dir, path)
             next unless File.exist?(fp)
             next if t.source_build_phase.files.any? { |bf| bf.file_ref&.path&.include?(File.basename(path)) }
             ref = g.new_file(path)
             t.source_build_phase.add_file_reference(ref)
             puts "  added #{File.basename(path)}"
           end
+
           p.save
           puts "Xcode project saved"' "$XCPROJ" /tmp/original
 
