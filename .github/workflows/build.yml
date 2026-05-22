@@ -22,6 +22,19 @@ jobs:
           cp -r ScreenCapture/Features/Preview/*   /tmp/original/ScreenCapture/Features/Preview/
           cp -r ScreenCapture/Features/Settings/*  /tmp/original/ScreenCapture/Features/Settings/
 
+      - name: Fix deployment target (26.0 → 15.0)
+        run: |
+          PBXPROJ=$(find /tmp/original -name "project.pbxproj" | head -1)
+          echo "=== Before ==="
+          grep "MACOSX_DEPLOYMENT_TARGET" "$PBXPROJ" | head -3
+          sed -i '' 's/MACOSX_DEPLOYMENT_TARGET = 26\.0/MACOSX_DEPLOYMENT_TARGET = 15.0/g' "$PBXPROJ"
+          echo "=== After ==="
+          grep "MACOSX_DEPLOYMENT_TARGET" "$PBXPROJ" | head -3
+          # Also fix Info.plist
+          PLIST=$(find /tmp/original -name "Info.plist" | head -1)
+          /usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Set :LSMinimumSystemVersion 15.0" "$PLIST" || true
+
       - name: Patch PreviewViewModel
         run: |
           PREVIEW_VM=$(find /tmp/original -name "PreviewViewModel.swift" | head -1)
@@ -38,7 +51,6 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            MACOSX_DEPLOYMENT_TARGET=15.0 \
             build 2>&1 | tail -30
 
       - name: Package DMG
