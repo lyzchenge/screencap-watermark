@@ -27,13 +27,6 @@ jobs:
         run: |
           PBXPROJ=$(find /tmp/original -name "project.pbxproj" | head -1)
           sed -i '' 's/MACOSX_DEPLOYMENT_TARGET = 26\.0/MACOSX_DEPLOYMENT_TARGET = 15.0/g' "$PBXPROJ"
-          # Also set CODE_SIGN_ENTITLEMENTS in pbxproj
-          sed -i '' 's|CODE_SIGN_ENTITLEMENTS = "";|CODE_SIGN_ENTITLEMENTS = "ScreenCapture/Supporting Files/ScreenCapture.entitlements";|g' "$PBXPROJ"
-          # If the above didn't match (field doesn't exist), add it to build settings
-          if ! grep -q "CODE_SIGN_ENTITLEMENTS" "$PBXPROJ"; then
-            # Add entitlements to Release build config
-            perl -i -pe 's/(buildSettings\s*=\s*\{)/\1\n\t\t\t\tCODE_SIGN_ENTITLEMENTS = "ScreenCapture\/Supporting Files\/ScreenCapture.entitlements";/' "$PBXPROJ"
-          fi
 
       - name: Patch PreviewViewModel
         run: |
@@ -41,8 +34,7 @@ jobs:
           python3 patch_preview_vm.py "$PREVIEW_VM"
 
       - name: Chinese translation
-        run: |
-          python3 zh_patch.py /tmp/original/ScreenCapture
+        run: python3 zh_patch.py /tmp/original/ScreenCapture
 
       - name: Build
         run: |
@@ -52,24 +44,26 @@ jobs:
             -scheme ScreenCapture \
             -configuration Release \
             -derivedDataPath /tmp/derived \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGNING_REQUIRED=YES \
-            CODE_SIGNING_ALLOWED=YES \
-            OTHER_CODE_SIGN_FLAGS="--entitlements /tmp/original/ScreenCapture/Supporting Files/ScreenCapture.entitlements" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
             build
+
+      - name: Ad-hoc sign with entitlements
+        run: |
+          APP=$(find /tmp/derived -name "ScreenCapture.app" -type d | head -1)
+          ENTITLEMENTS="/tmp/original/ScreenCapture/Supporting Files/ScreenCapture.entitlements"
+          echo "Signing $APP with entitlements $ENTITLEMENTS"
+          codesign --force --deep --sign - --entitlements "$ENTITLEMENTS" "$APP"
+          codesign -d --entitlements - "$APP" 2>/dev/null | head -5
 
       - name: Package DMG
         run: |
           APP=$(find /tmp/derived -name "ScreenCapture.app" -type d | head -1)
-          echo "App: $APP"
           mkdir -p /tmp/dmg
           cp -R "$APP" /tmp/dmg/
           ln -s /Applications /tmp/dmg/Applications
-          hdiutil create \
-            -volname "ScreenCapture" \
-            -srcfolder /tmp/dmg \
-            -ov -format UDZO \
-            /tmp/ScreenCapture-Watermark.dmg
+          hdiutil create -volname "ScreenCapture" -srcfolder /tmp/dmg -ov -format UDZO /tmp/ScreenCapture-Watermark.dmg
           ls -lh /tmp/ScreenCapture-Watermark.dmg
 
       - name: Upload DMG
