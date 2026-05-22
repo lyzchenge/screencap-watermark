@@ -220,12 +220,24 @@ final class SettingsViewModel {
 
     // MARK: - Permission Checking
 
+    /// 用 SCShareableContent 检查权限（macOS 15+ 兼容，CGPreflightScreenCaptureAccess 已废弃）
+    private nonisolated func checkScreenCaptureAccess() async -> Bool {
+        do {
+            let _ = try await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: true)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     /// Checks all required permissions and updates status
     func checkPermissions() {
         isCheckingPermissions = true
-        hasScreenRecordingPermission = CGPreflightScreenCaptureAccess()
         hasFolderAccessPermission = checkFolderAccess(to: saveLocation)
-        isCheckingPermissions = false
+        Task { @MainActor in
+            hasScreenRecordingPermission = await checkScreenCaptureAccess()
+            isCheckingPermissions = false
+        }
     }
 
     /// Checks if we have write access to the specified folder
@@ -244,15 +256,13 @@ final class SettingsViewModel {
 
     /// Requests screen recording permission or opens System Settings
     func requestScreenRecordingPermission() {
-        let granted = CGRequestScreenCaptureAccess()
-        if granted {
-            hasScreenRecordingPermission = true
-        } else {
-            openScreenRecordingSettings()
-            // Recheck after a delay
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(1))
-                hasScreenRecordingPermission = CGPreflightScreenCaptureAccess()
+        // macOS 15+ 用 SCShareableContent 触发系统弹窗
+        Task { @MainActor in
+            let granted = await checkScreenCaptureAccess()
+            if !granted {
+                openScreenRecordingSettings()
+            } else {
+                hasScreenRecordingPermission = true
             }
         }
     }
