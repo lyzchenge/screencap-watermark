@@ -19,7 +19,7 @@ def patch(filepath):
             // Apply watermark if enabled
             var finalImage = image
             let watermarkCfg = settings.watermarkConfig
-            if watermarkCfg.enabled && !watermarkCfg.text.isEmpty {
+            if watermarkCfg.enabled && ((watermarkCfg.textEnabled && !watermarkCfg.text.isEmpty) || (watermarkCfg.imageEnabled && watermarkCfg.imageData != nil)) {
                 let renderer = WatermarkRenderer()
                 finalImage = renderer.applyWatermark(to: finalImage, config: watermarkCfg)
             }
@@ -37,7 +37,7 @@ def patch(filepath):
                 pattern1,
                 '''var finalImage = image
             let watermarkCfg = settings.watermarkConfig
-            if watermarkCfg.enabled && !watermarkCfg.text.isEmpty {
+            if watermarkCfg.enabled && ((watermarkCfg.textEnabled && !watermarkCfg.text.isEmpty) || (watermarkCfg.imageEnabled && watermarkCfg.imageData != nil)) {
                 let renderer = WatermarkRenderer()
                 finalImage = renderer.applyWatermark(to: finalImage, config: watermarkCfg)
             }
