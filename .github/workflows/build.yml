@@ -21,11 +21,19 @@ jobs:
           cp ScreenCapture/Services/*.swift     /tmp/original/ScreenCapture/Services/
           cp -r ScreenCapture/Features/Preview/*   /tmp/original/ScreenCapture/Features/Preview/
           cp -r ScreenCapture/Features/Settings/*  /tmp/original/ScreenCapture/Features/Settings/
+          cp ScreenCapture/Supporting\ Files/ScreenCapture.entitlements /tmp/original/ScreenCapture/Supporting\ Files/
 
       - name: Fix deployment target (26.0 → 15.0)
         run: |
           PBXPROJ=$(find /tmp/original -name "project.pbxproj" | head -1)
           sed -i '' 's/MACOSX_DEPLOYMENT_TARGET = 26\.0/MACOSX_DEPLOYMENT_TARGET = 15.0/g' "$PBXPROJ"
+          # Also set CODE_SIGN_ENTITLEMENTS in pbxproj
+          sed -i '' 's|CODE_SIGN_ENTITLEMENTS = "";|CODE_SIGN_ENTITLEMENTS = "ScreenCapture/Supporting Files/ScreenCapture.entitlements";|g' "$PBXPROJ"
+          # If the above didn't match (field doesn't exist), add it to build settings
+          if ! grep -q "CODE_SIGN_ENTITLEMENTS" "$PBXPROJ"; then
+            # Add entitlements to Release build config
+            perl -i -pe 's/(buildSettings\s*=\s*\{)/\1\n\t\t\t\tCODE_SIGN_ENTITLEMENTS = "ScreenCapture\/Supporting Files\/ScreenCapture.entitlements";/' "$PBXPROJ"
+          fi
 
       - name: Patch PreviewViewModel
         run: |
@@ -44,9 +52,10 @@ jobs:
             -scheme ScreenCapture \
             -configuration Release \
             -derivedDataPath /tmp/derived \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=YES \
+            CODE_SIGNING_ALLOWED=YES \
+            OTHER_CODE_SIGN_FLAGS="--entitlements /tmp/original/ScreenCapture/Supporting Files/ScreenCapture.entitlements" \
             build
 
       - name: Package DMG
@@ -57,7 +66,7 @@ jobs:
           cp -R "$APP" /tmp/dmg/
           ln -s /Applications /tmp/dmg/Applications
           hdiutil create \
-            -volname "屏幕截图-水印版" \
+            -volname "ScreenCapture" \
             -srcfolder /tmp/dmg \
             -ov -format UDZO \
             /tmp/ScreenCapture-Watermark.dmg
