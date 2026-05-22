@@ -1,28 +1,24 @@
-import SwiftUI
-import AppKit
-
-/// Main settings view with all preference controls.
-/// Organized into sections: General, Export, Keyboard Shortcuts, Annotations, OCR, and Watermark.
+/// 设置面板主视图
 struct SettingsView: View {
     @Bindable var viewModel: SettingsViewModel
 
     var body: some View {
         Form {
-            // Permissions Section
+            // 权限
             Section {
                 PermissionRow(viewModel: viewModel)
             } header: {
-                Label("Permissions", systemImage: "lock.shield")
+                Label("权限", systemImage: "lock.shield")
             }
 
-            // General Settings Section
+            // 通用
             Section {
                 SaveLocationPicker(viewModel: viewModel)
             } header: {
-                Label("General", systemImage: "gearshape")
+                Label("通用", systemImage: "gearshape")
             }
 
-            // Export Settings Section
+            // 导出
             Section {
                 ExportFormatPicker(viewModel: viewModel)
                 if viewModel.defaultFormat == .jpeg {
@@ -31,13 +27,13 @@ struct SettingsView: View {
                     HEICQualitySlider(viewModel: viewModel)
                 }
             } header: {
-                Label("Export", systemImage: "square.and.arrow.up")
+                Label("导出", systemImage: "square.and.arrow.up")
             }
 
-            // Keyboard Shortcuts Section
+            // 快捷键
             Section {
                 ShortcutRecorder(
-                    label: "Full Screen Capture",
+                    label: "全屏截图",
                     shortcut: viewModel.fullScreenShortcut,
                     isRecording: viewModel.isRecordingFullScreenShortcut,
                     onRecord: { viewModel.startRecordingFullScreenShortcut() },
@@ -45,34 +41,34 @@ struct SettingsView: View {
                 )
 
                 ShortcutRecorder(
-                    label: "Selection Capture",
+                    label: "区域截图",
                     shortcut: viewModel.selectionShortcut,
                     isRecording: viewModel.isRecordingSelectionShortcut,
                     onRecord: { viewModel.startRecordingSelectionShortcut() },
                     onReset: { viewModel.resetSelectionShortcut() }
                 )
             } header: {
-                Label("Keyboard Shortcuts", systemImage: "keyboard")
+                Label("快捷键", systemImage: "keyboard")
             }
 
-            // OCR Settings Section
+            // OCR
             Section {
                 OCRRecognitionLevelPicker(viewModel: viewModel)
                 OCRLanguagePicker(viewModel: viewModel)
             } header: {
-                Label("OCR", systemImage: "doc.text.viewfinder")
+                Label("文字识别", systemImage: "doc.text.viewfinder")
             }
 
-            // Annotation Settings Section
+            // 标注
             Section {
                 StrokeColorPicker(viewModel: viewModel)
                 StrokeWidthSlider(viewModel: viewModel)
                 TextSizeSlider(viewModel: viewModel)
             } header: {
-                Label("Annotations", systemImage: "pencil.tip.crop.circle")
+                Label("标注", systemImage: "pencil.tip.crop.circle")
             }
 
-            // Watermark Settings Section
+            // 水印
             Section {
                 WatermarkToggle(viewModel: viewModel)
 
@@ -83,15 +79,15 @@ struct SettingsView: View {
                     WatermarkPositionPicker(viewModel: viewModel)
                 }
             } header: {
-                Label("Watermark", systemImage: "text.word.spacing")
+                Label("水印", systemImage: "text.word.spacing")
             }
 
-            // Reset Section
+            // 重置
             Section {
                 Button(role: .destructive) {
                     viewModel.resetAllToDefaults()
                 } label: {
-                    Label("Reset All to Defaults", systemImage: "arrow.counterclockwise")
+                    Label("恢复默认设置", systemImage: "arrow.counterclockwise")
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.red)
@@ -99,8 +95,8 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(minWidth: 480, minHeight: 550)
-        .alert("Error", isPresented: $viewModel.showErrorAlert) {
-            Button("OK") {
+        .alert("错误", isPresented: $viewModel.showErrorAlert) {
+            Button("确定") {
                 viewModel.errorMessage = nil
             }
         } message: {
@@ -111,35 +107,35 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Watermark Toggle
+// MARK: - 水印开关
 
 private struct WatermarkToggle: View {
     @Bindable var viewModel: SettingsViewModel
 
     var body: some View {
-        Toggle("Enable Watermark", isOn: $viewModel.watermarkEnabled)
-            .accessibilityLabel(Text("Enable watermark on screenshots"))
+        Toggle("启用水印", isOn: $viewModel.watermarkEnabled)
+            .accessibilityLabel(Text("截图中启用水印"))
     }
 }
 
-// MARK: - Watermark Text Field
+// MARK: - 水印文字
 
 private struct WatermarkTextField: View {
     @Bindable var viewModel: SettingsViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Watermark Text")
+            Text("水印文字")
                 .font(.subheadline)
 
-            TextField("e.g. © 2026 Your Name", text: $viewModel.watermarkText)
+            TextField("例如：© 2026 某某某", text: $viewModel.watermarkText)
                 .textFieldStyle(.roundedBorder)
-                .accessibilityLabel(Text("Watermark text content"))
+                .accessibilityLabel(Text("水印文字内容"))
         }
     }
 }
 
-// MARK: - Watermark Font Size Slider
+// MARK: - 水印字号
 
 private struct WatermarkFontSizeSlider: View {
     @Bindable var viewModel: SettingsViewModel
@@ -147,7 +143,7 @@ private struct WatermarkFontSizeSlider: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Font Size")
+                Text("字号")
                 Spacer()
                 Text("\(Int(viewModel.watermarkFontSizePercent))%")
                     .foregroundStyle(.secondary)
@@ -159,7 +155,7 @@ private struct WatermarkFontSizeSlider: View {
                 in: SettingsViewModel.watermarkFontSizeRange,
                 step: 0.5
             ) {
-                Text("Font Size")
+                Text("字号")
             } minimumValueLabel: {
                 Text("1%")
                     .font(.caption)
@@ -167,16 +163,16 @@ private struct WatermarkFontSizeSlider: View {
                 Text("10%")
                     .font(.caption)
             }
-            .accessibilityValue(Text("\(Int(viewModel.watermarkFontSizePercent)) percent"))
+            .accessibilityValue(Text("\(Int(viewModel.watermarkFontSizePercent))%"))
 
-            Text("Relative to image size")
+            Text("相对于图片尺寸的比例")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
     }
 }
 
-// MARK: - Watermark Opacity Slider
+// MARK: - 水印透明度
 
 private struct WatermarkOpacitySlider: View {
     @Bindable var viewModel: SettingsViewModel
@@ -184,7 +180,7 @@ private struct WatermarkOpacitySlider: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Opacity")
+                Text("透明度")
                 Spacer()
                 Text("\(Int(viewModel.watermarkOpacityPercent))%")
                     .foregroundStyle(.secondary)
@@ -196,7 +192,7 @@ private struct WatermarkOpacitySlider: View {
                 in: SettingsViewModel.watermarkOpacityRange,
                 step: 5
             ) {
-                Text("Opacity")
+                Text("透明度")
             } minimumValueLabel: {
                 Text("5%")
                     .font(.caption)
@@ -204,45 +200,43 @@ private struct WatermarkOpacitySlider: View {
                 Text("100%")
                     .font(.caption)
             }
-            .accessibilityValue(Text("\(Int(viewModel.watermarkOpacityPercent)) percent"))
+            .accessibilityValue(Text("\(Int(viewModel.watermarkOpacityPercent))%"))
         }
     }
 }
 
-// MARK: - Watermark Position Picker
+// MARK: - 水印位置
 
 private struct WatermarkPositionPicker: View {
     @Bindable var viewModel: SettingsViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Position")
+            Text("位置")
                 .font(.subheadline)
 
-            Picker("Position", selection: $viewModel.watermarkPosition) {
+            Picker("位置", selection: $viewModel.watermarkPosition) {
                 ForEach(WatermarkPosition.allCases, id: \.self) { pos in
                     Text(pos.displayName).tag(pos)
                 }
             }
             .pickerStyle(.segmented)
-            .accessibilityLabel(Text("Watermark position"))
+            .accessibilityLabel(Text("水印位置"))
         }
     }
 }
 
-// MARK: - Permission Row
+// MARK: - 权限行
 
-/// Row showing permission status with action button.
 private struct PermissionRow: View {
     @Bindable var viewModel: SettingsViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // Screen Recording permission
             PermissionItem(
                 icon: "record.circle",
-                title: "Screen Recording",
-                hint: "Required to capture screenshots",
+                title: "屏幕录制",
+                hint: "截图功能需要此权限",
                 isGranted: viewModel.hasScreenRecordingPermission,
                 isChecking: viewModel.isCheckingPermissions,
                 onGrant: { viewModel.requestScreenRecordingPermission() }
@@ -250,11 +244,10 @@ private struct PermissionRow: View {
 
             Divider()
 
-            // Folder Access permission
             PermissionItem(
                 icon: "folder",
-                title: "Save Location Access",
-                hint: "Required to save screenshots to the selected folder",
+                title: "保存位置访问",
+                hint: "保存截图需要访问所选文件夹",
                 isGranted: viewModel.hasFolderAccessPermission,
                 isChecking: viewModel.isCheckingPermissions,
                 onGrant: { viewModel.requestFolderAccess() }
@@ -265,7 +258,7 @@ private struct PermissionRow: View {
                 Button {
                     viewModel.checkPermissions()
                 } label: {
-                    Label("Refresh", systemImage: "arrow.clockwise")
+                    Label("刷新", systemImage: "arrow.clockwise")
                 }
                 .buttonStyle(.borderless)
             }
@@ -276,7 +269,6 @@ private struct PermissionRow: View {
     }
 }
 
-/// Individual permission item row
 private struct PermissionItem: View {
     let icon: String
     let title: String
@@ -305,7 +297,7 @@ private struct PermissionItem: View {
                         if isGranted {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundStyle(.green)
-                            Text("Granted")
+                            Text("已授权")
                                 .foregroundStyle(.secondary)
                         } else {
                             Image(systemName: "xmark.circle.fill")
@@ -314,7 +306,7 @@ private struct PermissionItem: View {
                             Button {
                                 onGrant()
                             } label: {
-                                Text("Grant Access")
+                                Text("授权")
                             }
                             .buttonStyle(.borderedProminent)
                             .controlSize(.small)
@@ -330,20 +322,19 @@ private struct PermissionItem: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text("\(title): \(isGranted ? "Granted" : "Not Granted")"))
+        .accessibilityLabel(Text("\(title)：\(isGranted ? "已授权" : "未授权")"))
     }
 }
 
-// MARK: - Save Location Picker
+// MARK: - 保存位置
 
-/// Picker for selecting the default save location.
 private struct SaveLocationPicker: View {
     @Bindable var viewModel: SettingsViewModel
 
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Save Location")
+                Text("保存位置")
                     .font(.headline)
                 Text(viewModel.saveLocationPath)
                     .font(.caption)
@@ -357,7 +348,7 @@ private struct SaveLocationPicker: View {
             Button {
                 viewModel.selectSaveLocation()
             } label: {
-                Text("Choose...")
+                Text("选择...")
             }
 
             Button {
@@ -365,40 +356,38 @@ private struct SaveLocationPicker: View {
             } label: {
                 Image(systemName: "folder")
             }
-            .help("Show in Finder")
+            .help("在访达中显示")
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text("Save Location: \(viewModel.saveLocationPath)"))
+        .accessibilityLabel(Text("保存位置：\(viewModel.saveLocationPath)"))
     }
 }
 
-// MARK: - Export Format Picker
+// MARK: - 导出格式
 
-/// Picker for selecting the default export format (PNG/JPEG/HEIC).
 private struct ExportFormatPicker: View {
     @Bindable var viewModel: SettingsViewModel
 
     var body: some View {
-        Picker("Default Format", selection: $viewModel.defaultFormat) {
+        Picker("默认格式", selection: $viewModel.defaultFormat) {
             Text("PNG").tag(ExportFormat.png)
             Text("JPEG").tag(ExportFormat.jpeg)
             Text("HEIC").tag(ExportFormat.heic)
         }
         .pickerStyle(.segmented)
-        .accessibilityLabel(Text("Export Format"))
+        .accessibilityLabel(Text("导出格式"))
     }
 }
 
-// MARK: - JPEG Quality Slider
+// MARK: - JPEG 质量
 
-/// Slider for adjusting JPEG compression quality.
 private struct JPEGQualitySlider: View {
     @Bindable var viewModel: SettingsViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("JPEG Quality")
+                Text("JPEG 质量")
                 Spacer()
                 Text("\(Int(viewModel.jpegQualityPercentage))%")
                     .foregroundStyle(.secondary)
@@ -410,7 +399,7 @@ private struct JPEGQualitySlider: View {
                 in: SettingsViewModel.jpegQualityRange,
                 step: 0.05
             ) {
-                Text("JPEG Quality")
+                Text("JPEG 质量")
             } minimumValueLabel: {
                 Text("10%")
                     .font(.caption)
@@ -418,25 +407,24 @@ private struct JPEGQualitySlider: View {
                 Text("100%")
                     .font(.caption)
             }
-            .accessibilityValue(Text("\(Int(viewModel.jpegQualityPercentage)) percent"))
+            .accessibilityValue(Text("\(Int(viewModel.jpegQualityPercentage))%"))
 
-            Text("Higher quality results in larger file sizes")
+            Text("质量越高，文件越大")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
     }
 }
 
-// MARK: - HEIC Quality Slider
+// MARK: - HEIC 质量
 
-/// Slider for adjusting HEIC compression quality.
 private struct HEICQualitySlider: View {
     @Bindable var viewModel: SettingsViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("HEIC Quality")
+                Text("HEIC 质量")
                 Spacer()
                 Text("\(Int(viewModel.heicQualityPercentage))%")
                     .foregroundStyle(.secondary)
@@ -448,7 +436,7 @@ private struct HEICQualitySlider: View {
                 in: SettingsViewModel.heicQualityRange,
                 step: 0.05
             ) {
-                Text("HEIC Quality")
+                Text("HEIC 质量")
             } minimumValueLabel: {
                 Text("10%")
                     .font(.caption)
@@ -456,18 +444,17 @@ private struct HEICQualitySlider: View {
                 Text("100%")
                     .font(.caption)
             }
-            .accessibilityValue(Text("\(Int(viewModel.heicQualityPercentage)) percent"))
+            .accessibilityValue(Text("\(Int(viewModel.heicQualityPercentage))%"))
 
-            Text("HEIC offers better compression than JPEG at similar quality")
+            Text("HEIC 比 JPEG 压缩率更高")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
     }
 }
 
-// MARK: - Shortcut Recorder
+// MARK: - 快捷键录制
 
-/// A control for recording keyboard shortcuts.
 private struct ShortcutRecorder: View {
     let label: String
     let shortcut: KeyboardShortcut
@@ -482,7 +469,7 @@ private struct ShortcutRecorder: View {
             Spacer()
 
             if isRecording {
-                Text("Press keys...")
+                Text("按下快捷键...")
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
@@ -507,27 +494,25 @@ private struct ShortcutRecorder: View {
                 Image(systemName: "arrow.counterclockwise")
             }
             .buttonStyle(.borderless)
-            .help("Reset to default")
+            .help("恢复默认")
             .disabled(isRecording)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text("\(label): \(shortcut.displayString)"))
+        .accessibilityLabel(Text("\(label)：\(shortcut.displayString)"))
     }
 }
 
-// MARK: - Stroke Color Picker
+// MARK: - 颜色选择
 
-/// Color picker for annotation stroke color.
 private struct StrokeColorPicker: View {
     @Bindable var viewModel: SettingsViewModel
 
     var body: some View {
         HStack {
-            Text("Stroke Color")
+            Text("线条颜色")
 
             Spacer()
 
-            // Preset color buttons
             HStack(spacing: 4) {
                 ForEach(SettingsViewModel.presetColors, id: \.self) { color in
                     Button {
@@ -543,7 +528,6 @@ private struct StrokeColorPicker: View {
                                 }
                             }
                             .overlay {
-                                // Add border for light colors
                                 if color == .white || color == .yellow {
                                     Circle()
                                         .stroke(Color.gray.opacity(0.3), lineWidth: 1)
@@ -555,16 +539,14 @@ private struct StrokeColorPicker: View {
                 }
             }
 
-            // Custom color picker
             ColorPicker("", selection: $viewModel.strokeColor, supportsOpacity: false)
                 .labelsHidden()
                 .frame(width: 30)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text("Stroke Color"))
+        .accessibilityLabel(Text("线条颜色"))
     }
 
-    /// Compare colors approximately
     private func colorsAreEqual(_ lhs: Color, _ rhs: Color) -> Bool {
         let lhsResolved = lhs.resolve(in: .init())
         let rhsResolved = rhs.resolve(in: .init())
@@ -573,33 +555,31 @@ private struct StrokeColorPicker: View {
                lhsResolved.blue == rhsResolved.blue
     }
 
-    /// Returns a human-readable name for a color
     private func colorName(for color: Color) -> String {
         switch color {
-        case .red: return "Red"
-        case .orange: return "Orange"
-        case .yellow: return "Yellow"
-        case .green: return "Green"
-        case .blue: return "Blue"
-        case .purple: return "Purple"
-        case .pink: return "Pink"
-        case .white: return "White"
-        case .black: return "Black"
-        default: return "Color"
+        case .red: return "红色"
+        case .orange: return "橙色"
+        case .yellow: return "黄色"
+        case .green: return "绿色"
+        case .blue: return "蓝色"
+        case .purple: return "紫色"
+        case .pink: return "粉色"
+        case .white: return "白色"
+        case .black: return "黑色"
+        default: return "颜色"
         }
     }
 }
 
-// MARK: - Stroke Width Slider
+// MARK: - 线条宽度
 
-/// Slider for adjusting annotation stroke width.
 private struct StrokeWidthSlider: View {
     @Bindable var viewModel: SettingsViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Stroke Width")
+                Text("线条宽度")
                 Spacer()
                 Text(String(format: "%.1f pt", viewModel.strokeWidth))
                     .foregroundStyle(.secondary)
@@ -611,7 +591,7 @@ private struct StrokeWidthSlider: View {
                 in: SettingsViewModel.strokeWidthRange,
                 step: 0.5
             ) {
-                Text("Stroke Width")
+                Text("线条宽度")
             } minimumValueLabel: {
                 Text("1")
                     .font(.caption)
@@ -619,21 +599,20 @@ private struct StrokeWidthSlider: View {
                 Text("20")
                     .font(.caption)
             }
-            .accessibilityValue(Text(String(format: "%.1f points", viewModel.strokeWidth)))
+            .accessibilityValue(Text(String(format: "%.1f 点", viewModel.strokeWidth)))
         }
     }
 }
 
-// MARK: - Text Size Slider
+// MARK: - 文字大小
 
-/// Slider for adjusting text annotation font size.
 private struct TextSizeSlider: View {
     @Bindable var viewModel: SettingsViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Text Size")
+                Text("文字大小")
                 Spacer()
                 Text("\(Int(viewModel.textSize)) pt")
                     .foregroundStyle(.secondary)
@@ -645,7 +624,7 @@ private struct TextSizeSlider: View {
                 in: SettingsViewModel.textSizeRange,
                 step: 1
             ) {
-                Text("Text Size")
+                Text("文字大小")
             } minimumValueLabel: {
                 Text("8")
                     .font(.caption)
@@ -653,22 +632,22 @@ private struct TextSizeSlider: View {
                 Text("72")
                     .font(.caption)
             }
-            .accessibilityValue(Text("\(Int(viewModel.textSize)) points"))
+            .accessibilityValue(Text("\(Int(viewModel.textSize)) 点"))
         }
     }
 }
 
-// MARK: - OCR Pickers (placeholder - need to use actual pickers from original)
+// MARK: - OCR 识别
 
 private struct OCRRecognitionLevelPicker: View {
     @Bindable var viewModel: SettingsViewModel
 
     var body: some View {
-        Picker("Recognition Level", selection: $viewModel.ocrRecognitionLevel) {
-            Text("Accurate").tag(OCRRecognitionLevel.accurate)
-            Text("Fast").tag(OCRRecognitionLevel.fast)
+        Picker("识别精度", selection: $viewModel.ocrRecognitionLevel) {
+            Text("精确").tag(OCRRecognitionLevel.accurate)
+            Text("快速").tag(OCRRecognitionLevel.fast)
         }
-        .accessibilityLabel(Text("OCR Recognition Level"))
+        .accessibilityLabel(Text("OCR 识别精度"))
     }
 }
 
@@ -676,13 +655,13 @@ private struct OCRLanguagePicker: View {
     @Bindable var viewModel: SettingsViewModel
 
     var body: some View {
-        Picker("Language", selection: $viewModel.ocrLanguage) {
-            Text("English").tag("en-US")
-            Text("Chinese (Simplified)").tag("zh-Hans")
-            Text("Chinese (Traditional)").tag("zh-Hant")
-            Text("Japanese").tag("ja-JP")
-            Text("Korean").tag("ko-KR")
+        Picker("语言", selection: $viewModel.ocrLanguage) {
+            Text("英文").tag("en-US")
+            Text("简体中文").tag("zh-Hans")
+            Text("繁体中文").tag("zh-Hant")
+            Text("日文").tag("ja-JP")
+            Text("韩文").tag("ko-KR")
         }
-        .accessibilityLabel(Text("OCR Language"))
+        .accessibilityLabel(Text("OCR 语言"))
     }
 }
