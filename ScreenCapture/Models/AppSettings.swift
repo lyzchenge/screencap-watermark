@@ -373,3 +373,37 @@ final class AppSettings {
         }
     }
 }
+
+// MARK: - Recent Capture
+
+/// Represents a recently saved screenshot with optional thumbnail.
+struct RecentCapture: Identifiable, Codable, Sendable {
+    /// Unique identifier
+    let id: UUID
+
+    /// Location of saved file
+    let filePath: URL
+
+    /// When the screenshot was captured
+    let captureDate: Date
+
+    /// JPEG thumbnail data (max 10KB, 128px on longest edge)
+    let thumbnailData: Data?
+
+    init(id: UUID = UUID(), filePath: URL, captureDate: Date = Date(), thumbnailData: Data? = nil) {
+        self.id = id
+        self.filePath = filePath
+        self.captureDate = captureDate
+        self.thumbnailData = thumbnailData
+    }
+
+    /// The filename without path
+    var filename: String {
+        filePath.lastPathComponent
+    }
+
+    /// Whether the file still exists on disk
+    var fileExists: Bool {
+        FileManager.default.fileExists(atPath: filePath.path)
+    }
+}
