@@ -17,9 +17,10 @@ jobs:
 
       - name: Apply patches
         run: |
-          cp ScreenCapture/Models/*    /tmp/original/ScreenCapture/Models/
-          cp ScreenCapture/Services/*  /tmp/original/ScreenCapture/Services/
-          cp ScreenCapture/Features/*  /tmp/original/ScreenCapture/Features/
+          cp ScreenCapture/Models/*.swift       /tmp/original/ScreenCapture/Models/
+          cp ScreenCapture/Services/*.swift     /tmp/original/ScreenCapture/Services/
+          cp -r ScreenCapture/Features/Preview/*   /tmp/original/ScreenCapture/Features/Preview/
+          cp -r ScreenCapture/Features/Settings/*  /tmp/original/ScreenCapture/Features/Settings/
 
       - name: Patch PreviewViewModel
         run: |
