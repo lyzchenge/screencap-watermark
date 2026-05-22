@@ -51,7 +51,8 @@ struct ImageExporter: Sendable {
         }
 
         // Apply watermark if configured
-        if let config = watermarkConfig, config.enabled, !config.text.isEmpty {
+        if let config = watermarkConfig, config.enabled,
+           (config.textEnabled && !config.text.isEmpty) || (config.imageEnabled && config.imageData != nil) {
             finalImage = watermarkRenderer.applyWatermark(to: finalImage, config: config)
         }
 
