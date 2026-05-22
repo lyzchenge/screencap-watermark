@@ -162,6 +162,32 @@ final class SettingsViewModel {
         set { settings.watermarkPosition = newValue }
     }
 
+    /// Whether text watermark is enabled
+    var watermarkTextEnabled: Bool {
+        get { settings.watermarkTextEnabled }
+        set { settings.watermarkTextEnabled = newValue }
+    }
+
+    /// Whether image watermark is enabled
+    var watermarkImageEnabled: Bool {
+        get { settings.watermarkImageEnabled }
+        set { settings.watermarkImageEnabled = newValue }
+    }
+
+    /// Image watermark size percentage (2-30%)
+    var watermarkImageSizePercent: Double {
+        get { settings.watermarkImageSizeRatio * 100 }
+        set { settings.watermarkImageSizeRatio = newValue / 100 }
+    }
+
+    /// Preview of selected watermark image
+    var watermarkPreviewImage: NSImage? {
+        if let data = settings.watermarkImageData {
+            return NSImage(data: data)
+        }
+        return nil
+    }
+
     // MARK: - Validation Ranges
 
     /// Valid range for stroke width
@@ -181,6 +207,9 @@ final class SettingsViewModel {
 
     /// Valid range for watermark opacity
     static let watermarkOpacityRange: ClosedRange<Double> = 5.0...100.0
+
+    /// Valid range for image watermark size
+    static let watermarkImageSizeRange: ClosedRange<Double> = 2.0...30.0
 
     // MARK: - Initialization
 
@@ -391,6 +420,31 @@ final class SettingsViewModel {
     func resetAllToDefaults() {
         settings.resetToDefaults()
         appDelegate?.updateHotkeys()
+    }
+
+    // MARK: - Image Watermark Actions
+
+    /// Opens file picker to select a watermark image
+    func selectWatermarkImage() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.png, .jpeg]
+        panel.message = "选择水印图片（PNG/JPEG）"
+
+        if panel.runModal() == .OK, let url = panel.url {
+            if let data = try? Data(contentsOf: url), data.count < 2_000_000 {
+                settings.watermarkImageData = data
+            } else {
+                showError("图片文件过大，请选择 2MB 以内的图片")
+            }
+        }
+    }
+
+    /// Clears the selected watermark image
+    func clearWatermarkImage() {
+        settings.watermarkImageData = nil
     }
 
     // MARK: - Private Helpers
