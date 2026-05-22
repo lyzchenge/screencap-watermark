@@ -27,16 +27,6 @@ jobs:
           PREVIEW_VM=$(find /tmp/original -name "PreviewViewModel.swift" | head -1)
           python3 patch_preview_vm.py "$PREVIEW_VM"
 
-      - name: Debug Xcode project
-        run: |
-          XCPROJ=$(find /tmp/original -name "*.xcodeproj" -d 1 | head -1)
-          echo "=== Xcode Project: $XCPROJ ==="
-          echo "=== Project Structure ==="
-          find /tmp/original/ScreenCapture -name "*.swift" | head -30
-          echo "=== pbxproj sample ==="
-          grep -c "PBXFileSystemSynchronized" "$XCPROJ/project.pbxproj" || echo "no synchronized groups"
-          echo "=== Build settings: SWIFT_INCLUDE ==="
-
       - name: Build
         run: |
           XCPROJ=$(find /tmp/original -name "*.xcodeproj" -d 1 | head -1)
@@ -45,7 +35,10 @@ jobs:
             -scheme ScreenCapture \
             -configuration Release \
             -derivedDataPath /tmp/derived \
-            build 2>&1 | tail -60
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build 2>&1 | tail -30
 
       - name: Package DMG
         run: |
